@@ -346,6 +346,12 @@
   font-family: var(--font-body);
   font-size: 0.8rem;
 }
+
+.router-link-no-decoration {
+  text-decoration: none;
+  color: #d9d2c5;
+}
+
 @media (max-width: 560px) {
   .footer { flex-direction: column; gap: 0.5rem; text-align: center; }
 }

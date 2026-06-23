@@ -44,10 +44,13 @@
       <div class="dash-explore">
         <h3>Explorer la bibliothèque</h3>
         <div class="explore-row">
-          <div class="explore-card">
-            <h4>Librairie d'exercices</h4>
-            <p>Révise les mouvements techniques (Clean & Jerk, Snatch, Muscle-up...)</p>
-          </div>
+            <div class="explore-card">
+              <router-link :to="{ name: 'exercises-library' }" class="router-link-no-decoration">
+              <h4>Librairie d'exercices</h4>
+              <p>Révise les mouvements techniques (Clean & Jerk, Snatch, Muscle-up...)</p>
+              </router-link>
+            </div>
+
           <div class="explore-card">
             <h4>La Méthode ForgeX</h4>
             <p>Comprendre comment est calculé ton mix de force et d'intensité.</p>
@@ -77,7 +80,6 @@ const formattedDate = computed(() => {
     // timeStyle: 'short' // Optionnel : pour mettre  l'heure  comme ceci par exemple(17:07)
   }).format(currentDate.value)
 })
-
 
 </script>
 

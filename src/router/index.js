@@ -4,7 +4,8 @@ import { useAuthStore } from '@/stores/auth' // On aura besoin du store !
 import HomeView from "@/views/HomeView.vue"
 import LoginView from '@/views/LoginView.vue'
 import WelcomeView from '@/views/WelcomeView.vue'
-import ProfileView from "@/views/users/profiles/ProfileView.vue"; // Ta page de présentation
+import ProfileView from "@/views/users/profiles/ProfileView.vue";
+import ExercisesLibrary from "@/views/exercises/ExercisesLibraryView.vue";
 
 const routes = [
   {
@@ -33,7 +34,16 @@ const routes = [
     name: 'profile',
     component: ProfileView,
     meta: { requiresAuth: true }
+  },
+
+  // exercises librairy
+  {
+    path: '/exercises',
+    name: 'exercises-library',
+    component: ExercisesLibrary,
+    meta: { requiresAuth: true }
   }
+
 ]
 
 const router = createRouter({
