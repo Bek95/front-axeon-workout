@@ -36,7 +36,7 @@
 
         <div class="filters-group">
           <label class="filter-label">Groupe Musculaire</label>
-          <div class="checkbox-list">
+          <div class="checkbox-list wrapper scroll-force">
             <label v-for="m in muscleOptions" :key="m.id" class="filter-cb">
               <input type="checkbox" :value="m.id" v-model="filters.muscles_group" @change="fetchExercises" />
               <span>{{ m.name }}</span>
@@ -46,10 +46,10 @@
 
         <div class="filters-group">
           <label class="filter-label">Équipement</label>
-          <div class="checkbox-list">
+          <div class="checkbox-list wrapper scroll-force">
             <label v-for="eq in equipmentOptions" :key="eq" class="filter-cb">
-              <input type="checkbox" :value="eq" v-model="filters.equipment" />
-              <span>{{ eq }}</span>
+              <input type="checkbox" :value="eq.id" v-model="filters.equipment" @change="fetchExercises" />
+              <span>{{ eq.name }}</span>
             </label>
           </div>
         </div>
@@ -123,6 +123,7 @@ const allExercises = ref([]) // Source brute de l'API
 const loading = ref(false)
 const muscleOptions = ref([])
 const loadingMuscles = ref(false)
+const loadingEquipment = ref(false)
 
 // Récupération des groupes musculaires
 async function fetchMuscleGroup() {
@@ -141,8 +142,27 @@ async function fetchMuscleGroup() {
   }
 }
 
-const equipmentOptions = ref(['dumbbell', 'barbell', 'kettlebell', 'bodyweight'])
+const equipmentOptions = ref([])
 const movementOptions = ref(['push', 'pull', 'legs', 'core'])
+
+// on récupère la liste des équipements
+async function fetchEquipment() {
+  loadingEquipment.value = true
+  try {
+    const response = await api.get('/equipments')
+    const rawData = Array.isArray(response.data) ? response.data : (response.data.data || [])
+
+    equipmentOptions.value = rawData.sort((a, b) => {
+      return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
+    })
+
+  } catch (error) {
+    console.error('Erreur API ForgeX: ' + error)
+  } finally {
+    loadingEquipment.value = false
+  }
+
+}
 
 // Variables d'état pour les filtres
 const filters = reactive({
@@ -174,6 +194,13 @@ async function fetchExercises() {
       params.muscles_group = filters.muscles_group
     }
 
+    console.log(filters.equipment)
+    if (filters.equipment && filters.equipment.length > 0) {
+      params.equipment = filters.equipment
+    }
+
+    console.log( "params : ",  params)
+
     const response = await api.get('exercises', { params })
     allExercises.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
   } catch (error) {
@@ -202,7 +229,7 @@ const exercises = computed(() => {
     // 3. Filtre type de mouvement
     if (filters.movement_type.length > 0 && !filters.movement_type.includes(exo.movement_type)) return false
 
-    // 4. Filtre groupe musculaire (CORRIGÉ : On compare l'ID avec l'ID, pas le slug)
+    // 4. Filtre groupe musculaire (On compare l'ID avec l'ID, pas le slug)
     if (filters.muscles_group.length > 0) {
       const matchPrincipal = filters.muscles_group.includes(exo.muscle_group?.id)
       const matchSecondaire = filters.muscles_group.includes(exo.secondary_muscle_group?.id)
@@ -222,15 +249,51 @@ function resetFilters() {
   filters.movement_type = []
   filters.per_page = 10
   fetchExercises() // Relance la recherche globale après reset
+  fetchEquipment()
 }
 
 onMounted(() => {
   fetchExercises()
   fetchMuscleGroup()
+  fetchEquipment()
 })
 </script>
 
 <style scoped>
+/* Conteneur principal */
+.scroll-force {
+  max-height: 200px;
+  overflow-y: scroll; /* Force l'existence du scroll vertical */
+
+  /* Pour Firefox */
+  scrollbar-color: var(--accent, #ff5a36) var(--panel, #21252a);
+  scrollbar-width: thin;
+}
+
+/* --- Pour Chrome, Safari, Edge (Force la visibilité permanente) --- */
+
+/* 1. On définit la largeur de la barre */
+.scroll-force::-webkit-scrollbar {
+  width: 6px; /* Une barre fine mais bien visible */
+  display: block; /* Force l'affichage */
+}
+
+/* 2. La piste (le fond de la barre) */
+.scroll-force::-webkit-scrollbar-track {
+  background: var(--ink-soft, #1c2024); /* Fond sombre qui s'intègre à ton panneau */
+  border-radius: 10px;
+}
+
+/* 3. Le curseur (la barre qui bouge) */
+.scroll-force::-webkit-scrollbar-thumb {
+  background-color: var(--accent, #ff5a36); /* Ta couleur orange/rouge */
+  border-radius: 10px;
+}
+
+/* 4. Effet de survol optionnel pour la finition UI */
+.scroll-force::-webkit-scrollbar-thumb:hover {
+  background-color: #e04525;
+}
 /* Conserve tes styles CSS actuels, ils sont parfaits */
 .library-page {
   --ink: #14171a;
