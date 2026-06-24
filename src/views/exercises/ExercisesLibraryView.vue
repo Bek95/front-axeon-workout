@@ -57,9 +57,9 @@
         <div class="filters-group">
           <label class="filter-label">Type de Mouvement</label>
           <div class="checkbox-list">
-            <label v-for="mv in movementOptions" :key="mv" class="filter-cb">
-              <input type="checkbox" :value="mv" v-model="filters.movement_type" />
-              <span class="uppercase-tag">{{ mv }}</span>
+            <label v-for="mv in movementOptions" :key="mv.name" class="filter-cb">
+              <input type="checkbox" :value="mv.name" v-model="filters.movement_type" @change="fetchExercises" />
+              <span>{{ mv.label }}</span>
             </label>
           </div>
         </div>
@@ -124,6 +124,7 @@ const loading = ref(false)
 const muscleOptions = ref([])
 const loadingMuscles = ref(false)
 const loadingEquipment = ref(false)
+const loadingMovementType = ref(false)
 
 // Récupération des groupes musculaires
 async function fetchMuscleGroup() {
@@ -143,7 +144,22 @@ async function fetchMuscleGroup() {
 }
 
 const equipmentOptions = ref([])
-const movementOptions = ref(['push', 'pull', 'legs', 'core'])
+const movementOptions = ref([])
+
+// on récupère les mouvement types
+async function fetchMovementTypes() {
+  loadingMovementType.value = true
+  try {
+    const response = await api.get('/movement-types')
+
+    movementOptions.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
+
+  } catch (error) {
+    console.error('Erreur API ForgeX: ' + error)
+  } finally {
+    loadingMovementType.value = false
+  }
+}
 
 // on récupère la liste des équipements
 async function fetchEquipment() {
@@ -194,14 +210,16 @@ async function fetchExercises() {
       params.muscles_group = filters.muscles_group
     }
 
-    console.log(filters.equipment)
     if (filters.equipment && filters.equipment.length > 0) {
       params.equipment = filters.equipment
     }
 
-    console.log( "params : ",  params)
+    if (filters.movement_type && filters.movement_type.length > 0) {
+      params.movement_type = filters.movement_type
+    }
 
     const response = await api.get('exercises', { params })
+    console.log(response.data)
     allExercises.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
   } catch (error) {
     console.error('Erreur API ForgeX:', error)
@@ -227,7 +245,10 @@ const exercises = computed(() => {
     if (filters.mechanic && exo.mechanic !== filters.mechanic) return false
 
     // 3. Filtre type de mouvement
-    if (filters.movement_type.length > 0 && !filters.movement_type.includes(exo.movement_type)) return false
+    if (filters.movement_type.length > 0) {
+      const exoMoveType = (exo.movement_type || '').toUpperCase()
+      if (!filters.movement_type.includes(exoMoveType)) return false
+    }
 
     // 4. Filtre groupe musculaire (On compare l'ID avec l'ID, pas le slug)
     if (filters.muscles_group.length > 0) {
@@ -250,12 +271,14 @@ function resetFilters() {
   filters.per_page = 10
   fetchExercises() // Relance la recherche globale après reset
   fetchEquipment()
+  fetchMovementTypes()
 }
 
 onMounted(() => {
   fetchExercises()
   fetchMuscleGroup()
   fetchEquipment()
+  fetchMovementTypes()
 })
 </script>
 
