@@ -27,7 +27,7 @@
 
         <div class="filters-group">
           <label class="filter-label">Nombre d'exercices à afficher</label>
-          <select v-model.number="filters.per_page" class="filter-select" @change="fetchExercises">
+          <select v-model.number="filters.per_page" class="filter-select" @change="changePerPage">
             <option v-for="item in perPage" :key="item.id" :value="item.value">
               {{ item.value }} exercices
             </option>
@@ -38,7 +38,7 @@
           <label class="filter-label">Groupe Musculaire</label>
           <div class="checkbox-list wrapper scroll-force">
             <label v-for="m in muscleOptions" :key="m.id" class="filter-cb">
-              <input type="checkbox" :value="m.id" v-model="filters.muscles_group" @change="fetchExercises" />
+              <input type="checkbox" :value="m.id" v-model="filters.muscles_group" @change="triggerFetch" />
               <span>{{ m.name }}</span>
             </label>
           </div>
@@ -47,8 +47,8 @@
         <div class="filters-group">
           <label class="filter-label">Équipement</label>
           <div class="checkbox-list wrapper scroll-force">
-            <label v-for="eq in equipmentOptions" :key="eq" class="filter-cb">
-              <input type="checkbox" :value="eq.id" v-model="filters.equipment" @change="fetchExercises" />
+            <label v-for="eq in equipmentOptions" :key="eq.id" class="filter-cb">
+              <input type="checkbox" :value="eq.id" v-model="filters.equipment" @change="triggerFetch" />
               <span>{{ eq.name }}</span>
             </label>
           </div>
@@ -58,16 +58,15 @@
           <label class="filter-label">Type de Mouvement</label>
           <div class="checkbox-list">
             <label v-for="mv in movementOptions" :key="mv.name" class="filter-cb">
-              <input type="checkbox" :value="mv.name" v-model="filters.movement_type" @change="fetchExercises" />
+              <input type="checkbox" :value="mv.name" v-model="filters.movement_type" @change="triggerFetch" />
               <span>{{ mv.label }}</span>
             </label>
           </div>
         </div>
 
-        <!-- execution type -->
         <div class="filters-group">
           <label class="filter-label">Type d'éxécution</label>
-          <select v-model="filters.execution_type" class="filter-select" @change="fetchExercises">
+          <select v-model="filters.execution_type" class="filter-select" @change="triggerFetch">
             <option value="">Tous</option>
             <option v-for="val in executionTypeOptions" :key="val.name" :value="val.name">{{ val.label }}</option>
           </select>
@@ -75,7 +74,7 @@
 
         <div class="filters-group">
           <label class="filter-label">Mécanique</label>
-          <select v-model="filters.mechanic" class="filter-select" @change="fetchExercises">
+          <select v-model="filters.mechanic" class="filter-select" @change="triggerFetch">
             <option value="">Tous</option>
             <option v-for="val in mechanicTypeOptions" :key="val.name" :value="val.name">{{ val.label }}</option>
           </select>
@@ -92,30 +91,65 @@
           <p>Aucun mouvement ne correspond aux filtres appliqués.</p>
         </div>
 
-        <div v-else class="exercises-grid">
-          <article v-for="exo in exercises" :key="exo.id" class="exo-card">
-            <div class="exo-card__badges">
-    <span class="badge badge--accent" v-if="exo.muscle_group">
-      {{ typeof exo.muscle_group.name === 'object' ? exo.muscle_group.name[currentLocale] : exo.muscle_group.name }}
-    </span>
-              <span v-if="exo.movement_type" class="badge">{{ exo.movement_type }}</span>
-              <span v-if="exo.mechanic" class="badge badge--outline">{{ exo.mechanic }}</span>
+        <div v-else>
+          <div class="exercises-grid">
+            <article v-for="exo in exercises" :key="exo.id" class="exo-card">
+              <div class="exo-card__badges">
+                <span class="badge badge--accent" v-if="exo.muscle_group">
+                  {{ typeof exo.muscle_group.name === 'object' ? exo.muscle_group.name[currentLocale] : exo.muscle_group.name }}
+                </span>
+                <span v-if="exo.movement_type" class="badge">{{ exo.movement_type }}</span>
+                <span v-if="exo.mechanic" class="badge badge--outline">{{ exo.mechanic }}</span>
+              </div>
+
+              <h2 class="exo-card__title">{{ exo.name?.[currentLocale] || exo.name }}</h2>
+              <p class="exo-card__description">{{ exo.description?.[currentLocale] || exo.description }}</p>
+
+              <div class="exo-card__instructions">
+                <h4>Instructions :</h4>
+                <p class="pre-line">{{ exo.instructions?.[currentLocale] || exo.instructions }}</p>
+              </div>
+
+              <div class="exo-card__footer">
+                <span v-if="exo.secondary_muscle_group" class="secondary-muscles">
+                  Synergie : {{ typeof exo.secondary_muscle_group.name === 'object' ? exo.secondary_muscle_group.name[currentLocale] : exo.secondary_muscle_group.name }}
+                </span>
+              </div>
+            </article>
+          </div>
+
+          <div v-if="pagination.last_page > 1" class="pagination-container">
+            <button
+              class="pagination-btn"
+              :disabled="pagination.current_page === 1"
+              @click="changePage(pagination.current_page - 1)"
+            >
+              &laquo; Précédent
+            </button>
+
+            <div class="pagination-pages">
+              <template v-for="(page, index) in visiblePages" :key="index">
+                <button
+                  v-if="page !== '...'"
+                  class="page-number"
+                  :class="{ 'page-number--active': page === pagination.current_page }"
+                  @click="changePage(page)"
+                >
+                  {{ page }}
+                </button>
+
+                <span v-else class="pagination-ellipsis">...</span>
+              </template>
             </div>
 
-            <h2 class="exo-card__title">{{ exo.name?.[currentLocale] || exo.name }}</h2>
-            <p class="exo-card__description">{{ exo.description?.[currentLocale] || exo.description }}</p>
-
-            <div class="exo-card__instructions">
-              <h4>Instructions :</h4>
-              <p class="pre-line">{{ exo.instructions?.[currentLocale] || exo.instructions }}</p>
-            </div>
-
-            <div class="exo-card__footer">
-    <span v-if="exo.secondary_muscle_group" class="secondary-muscles">
-      Synergie : {{ typeof exo.secondary_muscle_group.name === 'object' ? exo.secondary_muscle_group.name[currentLocale] : exo.secondary_muscle_group.name }}
-    </span>
-            </div>
-          </article>
+            <button
+              class="pagination-btn"
+              :disabled="pagination.current_page === pagination.last_page"
+              @click="changePage(pagination.current_page + 1)"
+            >
+              Suivant &raquo;
+            </button>
+          </div>
         </div>
       </main>
     </div>
@@ -136,90 +170,17 @@ const loadingMovementType = ref(false)
 const loadingExecutionType = ref(false)
 const loadingMechanicType = ref(false)
 
-//options for selects
+//  État pour stocker la structure du Paginator Laravel
+const pagination = reactive({
+  current_page: 1,
+  last_page: 1,
+  total: 0
+})
+
 const equipmentOptions = ref([])
 const movementOptions = ref([])
 const executionTypeOptions = ref([])
 const mechanicTypeOptions = ref([])
-
-async function fetchMechanics() {
-  loadingMechanicType.value = true
-  try {
-    const response = await api.get('/mechanic-types')
-    mechanicTypeOptions.value = Array.isArray(response.data) ? response.data : (response.data || [])
-    console.log("mechanicTypeOptions", mechanicTypeOptions)
-
-  } catch (error) {
-    console.error('Error fetching mechanics', error)
-  } finally {
-    loadingMechanicType.value = false
-  }
-}
-
-// Récupération des groupes musculaires
-async function fetchMuscleGroup() {
-  loadingMuscles.value = true
-  try {
-    const response = await api.get('/muscles-group')
-    const rawData = Array.isArray(response.data) ? response.data : (response.data.data || [])
-
-    muscleOptions.value = rawData.sort((a, b) => {
-      return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
-    })
-  } catch (error) {
-    console.error('Erreur API ForgeX: ' + error)
-  } finally {
-    loadingMuscles.value = false
-  }
-}
-
-async function fetchExecutionType() {
-  loadingExecutionType.value = true
-
-  try {
-    const response = await api.get('/execution-types');
-
-    executionTypeOptions.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
-  } catch (error) {
-    console.error('Erreur API ForgeX: ' + error)
-  } finally {
-    loadingExecutionType.value = false
-  }
-}
-
-// on récupère les mouvement types
-async function fetchMovementTypes() {
-  loadingMovementType.value = true
-  try {
-    const response = await api.get('/movement-types')
-
-    movementOptions.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
-
-  } catch (error) {
-    console.error('Erreur API ForgeX: ' + error)
-  } finally {
-    loadingMovementType.value = false
-  }
-}
-
-// on récupère la liste des équipements
-async function fetchEquipment() {
-  loadingEquipment.value = true
-  try {
-    const response = await api.get('/equipments')
-    const rawData = Array.isArray(response.data) ? response.data : (response.data.data || [])
-
-    equipmentOptions.value = rawData.sort((a, b) => {
-      return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
-    })
-
-  } catch (error) {
-    console.error('Erreur API ForgeX: ' + error)
-  } finally {
-    loadingEquipment.value = false
-  }
-
-}
 
 // Variables d'état pour les filtres
 const filters = reactive({
@@ -230,6 +191,7 @@ const filters = reactive({
   movement_type: [],
   execution_type: '',
   per_page: 10,
+  page: 1, //  Étape essentielle : Suivi de la page en cours
 })
 
 let optionId = 0
@@ -241,39 +203,51 @@ const perPage = ref([
   {id: optionId++, value: 100}
 ])
 
+// Fonction de navigation
+function changePage(newPage) {
+  filters.page = newPage
+  fetchExercises()
+}
+
+// Sécurité : si on change le nombre d'éléments par page, on repasse à la page 1
+function changePerPage() {
+  filters.page = 1
+  fetchExercises()
+}
+
+// Sécurité : si on change un filtre, on repasse à la page 1 pour éviter d'être hors-zone
+function triggerFetch() {
+  filters.page = 1
+  fetchExercises()
+}
+
 // Appel API principal
 async function fetchExercises() {
   loading.value = true
   try {
     const params = {}
 
+    if (filters.page) params.page = filters.page
     if (filters.per_page) params.per_page = filters.per_page
-    if (filters.muscles_group && filters.muscles_group.length > 0) {
-      params.muscles_group = filters.muscles_group
-    }
-
-    if (filters.equipment && filters.equipment.length > 0) {
-      params.equipment = filters.equipment
-    }
-
-    if (filters.movement_type && filters.movement_type.length > 0) {
-      params.movement_type = filters.movement_type
-    }
-
-    if (filters.execution_type && filters.execution_type.length > 0) {
-      params.execution_type = filters.execution_type
-    }
-
-    if (filters.mechanic && filters.mechanic.length > 0 && filters.mechanic.length > 0) {
-      params.mechanic = filters.mechanic
-    }
-
-    console.log('PARAMS : ^^^^^^^^: ',  params)
-
+    if (filters.muscles_group && filters.muscles_group.length > 0) params.muscles_group = filters.muscles_group
+    if (filters.equipment && filters.equipment.length > 0) params.equipment = filters.equipment
+    if (filters.movement_type && filters.movement_type.length > 0) params.movement_type = filters.movement_type
+    if (filters.execution_type && filters.execution_type.length > 0) params.execution_type = filters.execution_type
+    if (filters.mechanic && filters.mechanic.length > 0) params.mechanic = filters.mechanic
 
     const response = await api.get('exercises', { params })
-    console.log("exercices ------------ : ", response.data)
-    allExercises.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
+
+    // 🔹 MODIFICATION ICI : On va chercher dans response.data.meta
+    if (response.data && response.data.meta) {
+      allExercises.value = response.data.data || []
+      pagination.current_page = response.data.meta.current_page
+      pagination.last_page = response.data.meta.last_page
+      pagination.total = response.data.meta.total
+    } else {
+      // Sécurité si un jour l'API renvoie un tableau brut
+      allExercises.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
+      pagination.last_page = 1
+    }
   } catch (error) {
     console.error('Erreur API ForgeX:', error)
   } finally {
@@ -281,12 +255,73 @@ async function fetchExercises() {
   }
 }
 
-// Propriété calculée corrigée
+// Récupération des données secondaires
+async function fetchMechanics() {
+  loadingMechanicType.value = true
+  try {
+    const response = await api.get('/mechanic-types')
+    mechanicTypeOptions.value = Array.isArray(response.data) ? response.data : (response.data || [])
+  } catch (error) {
+    console.error('Error fetching mechanics', error)
+  } finally {
+    loadingMechanicType.value = false
+  }
+}
+
+async function fetchMuscleGroup() {
+  loadingMuscles.value = true
+  try {
+    const response = await api.get('/muscles-group')
+    const rawData = Array.isArray(response.data) ? response.data : (response.data.data || [])
+    muscleOptions.value = rawData.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
+  } catch (error) {
+    console.error('Erreur API ForgeX: ' + error)
+  } finally {
+    loadingMuscles.value = false
+  }
+}
+
+async function fetchExecutionType() {
+  loadingExecutionType.value = true
+  try {
+    const response = await api.get('/execution-types')
+    executionTypeOptions.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
+  } catch (error) {
+    console.error('Erreur API ForgeX: ' + error)
+  } finally {
+    loadingExecutionType.value = false
+  }
+}
+
+async function fetchMovementTypes() {
+  loadingMovementType.value = true
+  try {
+    const response = await api.get('/movement-types')
+    movementOptions.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
+  } catch (error) {
+    console.error('Erreur API ForgeX: ' + error)
+  } finally {
+    loadingMovementType.value = false
+  }
+}
+
+async function fetchEquipment() {
+  loadingEquipment.value = true
+  try {
+    const response = await api.get('/equipments')
+    const rawData = Array.isArray(response.data) ? response.data : (response.data.data || [])
+    equipmentOptions.value = rawData.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
+  } catch (error) {
+    console.error('Erreur API ForgeX: ' + error)
+  } finally {
+    loadingEquipment.value = false
+  }
+}
+
 const exercises = computed(() => {
   if (!allExercises.value || allExercises.value.length === 0) return []
 
   return allExercises.value.filter(exo => {
-    // 1. Filtre textuel
     if (filters.search) {
       const query = filters.search.toLowerCase()
       const nameFR = exo.name?.fr?.toLowerCase() || ''
@@ -294,28 +329,45 @@ const exercises = computed(() => {
       if (!nameFR.includes(query) && !nameEN.includes(query)) return false
     }
 
-    // 2. Filtre mécanique
     if (filters.mechanic.length > 0) {
       const exoMechanicType = (exo.mechanic || '').toUpperCase()
       if (!filters.mechanic.includes(exoMechanicType)) return false
     }
 
-    // 3. Filtre type de mouvement
     if (filters.movement_type.length > 0) {
       const exoMoveType = (exo.movement_type || '').toUpperCase()
       if (!filters.movement_type.includes(exoMoveType)) return false
     }
 
-    // 4. Filtre groupe musculaire (On compare l'ID avec l'ID, pas le slug)
     if (filters.muscles_group.length > 0) {
       const matchPrincipal = filters.muscles_group.includes(exo.muscle_group?.id)
       const matchSecondaire = filters.muscles_group.includes(exo.secondary_muscle_group?.id)
-
       if (!matchPrincipal && !matchSecondaire) return false
     }
 
     return true
   })
+})
+
+// Propriété calculée pour générer les pages visibles avec des "..."
+const visiblePages = computed(() => {
+  const current = pagination.current_page
+  const last = pagination.last_page
+  const delta = 1 // Nombre de pages à afficher avant et après la page courante
+
+  const pages = []
+
+  for (let i = 1; i <= last; i++) {
+    // On garde toujours la première page, la dernière page, et les pages autour de la page courante
+    if (i === 1 || i === last || (i >= current - delta && i <= current + delta)) {
+      pages.push(i)
+    } else if (pages[pages.length - 1] !== '...') {
+      // On ajoute les points de suspension si ce n'est pas déjà fait
+      pages.push('...')
+    }
+  }
+
+  return pages
 })
 
 function resetFilters() {
@@ -324,13 +376,10 @@ function resetFilters() {
   filters.equipment = []
   filters.muscles_group = []
   filters.movement_type = []
-  filters.execution_type = []
+  filters.execution_type = ''
   filters.per_page = 10
-  fetchExercises() // Relance la recherche globale après reset
-  fetchEquipment()
-  fetchMovementTypes()
-  fetchExecutionType()
-  fetchMechanics()
+  filters.page = 1
+  fetchExercises()
 }
 
 onMounted(() => {
@@ -439,4 +488,77 @@ onMounted(() => {
 .loading-state, .empty-state { text-align: center; padding: 4rem 0; color: var(--paper-dim); grid-column: 1 / -1; }
 .spinner { width: 30px; height: 30px; border: 3px solid var(--panel-line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- PAGINATION STYLES --- */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--panel-line);
+}
+
+.pagination-btn {
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  color: var(--paper);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-pages {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pagination-ellipsis {
+  color: var(--paper-dim);
+  padding: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.page-number {
+  background: transparent;
+  border: 1px solid var(--panel-line);
+  color: var(--paper-dim);
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-number:hover {
+  border-color: var(--accent);
+  color: var(--paper);
+}
+
+.page-number--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+}
 </style>
