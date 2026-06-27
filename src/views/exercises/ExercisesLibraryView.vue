@@ -64,6 +64,15 @@
           </div>
         </div>
 
+        <!-- execution type -->
+        <div class="filters-group">
+          <label class="filter-label">Type d'éxécution</label>
+          <select v-model="filters.execution_type" class="filter-select" @change="fetchExercises">
+            <option value="">Tous</option>
+            <option v-for="val in executionTypeOptions" :key="val.name" :value="val.name">{{ val.label }}</option>
+          </select>
+        </div>
+
         <div class="filters-group">
           <label class="filter-label">Mécanique</label>
           <select v-model="filters.mechanic" class="filter-select">
@@ -125,6 +134,7 @@ const muscleOptions = ref([])
 const loadingMuscles = ref(false)
 const loadingEquipment = ref(false)
 const loadingMovementType = ref(false)
+const loadingExecutionType = ref(false)
 
 // Récupération des groupes musculaires
 async function fetchMuscleGroup() {
@@ -145,6 +155,21 @@ async function fetchMuscleGroup() {
 
 const equipmentOptions = ref([])
 const movementOptions = ref([])
+const executionTypeOptions = ref([])
+
+async function fetchExecutionType() {
+  loadingExecutionType.value = true
+
+  try {
+    const response = await api.get('/execution-types');
+
+    executionTypeOptions.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
+  } catch (error) {
+    console.error('Erreur API ForgeX: ' + error)
+  } finally {
+    loadingExecutionType.value = false
+  }
+}
 
 // on récupère les mouvement types
 async function fetchMovementTypes() {
@@ -187,6 +212,7 @@ const filters = reactive({
   equipment: [],
   muscles_group: [],
   movement_type: [],
+  execution_type: '',
   per_page: 10,
 })
 
@@ -217,6 +243,11 @@ async function fetchExercises() {
     if (filters.movement_type && filters.movement_type.length > 0) {
       params.movement_type = filters.movement_type
     }
+
+    if (filters.execution_type && filters.execution_type.length > 0) {
+      params.execution_type = filters.execution_type
+    }
+
 
     const response = await api.get('exercises', { params })
     console.log(response.data)
@@ -268,10 +299,12 @@ function resetFilters() {
   filters.equipment = []
   filters.muscles_group = []
   filters.movement_type = []
+  filters.execution_type = []
   filters.per_page = 10
   fetchExercises() // Relance la recherche globale après reset
   fetchEquipment()
   fetchMovementTypes()
+  fetchExecutionType()
 }
 
 onMounted(() => {
@@ -279,6 +312,7 @@ onMounted(() => {
   fetchMuscleGroup()
   fetchEquipment()
   fetchMovementTypes()
+  fetchExecutionType()
 })
 </script>
 
