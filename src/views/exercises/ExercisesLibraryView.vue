@@ -75,10 +75,9 @@
 
         <div class="filters-group">
           <label class="filter-label">Mécanique</label>
-          <select v-model="filters.mechanic" class="filter-select">
+          <select v-model="filters.mechanic" class="filter-select" @change="fetchExercises">
             <option value="">Tous</option>
-            <option value="isolation">Isolation</option>
-            <option value="compound">Polyarticulaire (Compound)</option>
+            <option v-for="val in mechanicTypeOptions" :key="val.name" :value="val.name">{{ val.label }}</option>
           </select>
         </div>
       </aside>
@@ -135,6 +134,27 @@ const loadingMuscles = ref(false)
 const loadingEquipment = ref(false)
 const loadingMovementType = ref(false)
 const loadingExecutionType = ref(false)
+const loadingMechanicType = ref(false)
+
+//options for selects
+const equipmentOptions = ref([])
+const movementOptions = ref([])
+const executionTypeOptions = ref([])
+const mechanicTypeOptions = ref([])
+
+async function fetchMechanics() {
+  loadingMechanicType.value = true
+  try {
+    const response = await api.get('/mechanic-types')
+    mechanicTypeOptions.value = Array.isArray(response.data) ? response.data : (response.data || [])
+    console.log("mechanicTypeOptions", mechanicTypeOptions)
+
+  } catch (error) {
+    console.error('Error fetching mechanics', error)
+  } finally {
+    loadingMechanicType.value = false
+  }
+}
 
 // Récupération des groupes musculaires
 async function fetchMuscleGroup() {
@@ -152,10 +172,6 @@ async function fetchMuscleGroup() {
     loadingMuscles.value = false
   }
 }
-
-const equipmentOptions = ref([])
-const movementOptions = ref([])
-const executionTypeOptions = ref([])
 
 async function fetchExecutionType() {
   loadingExecutionType.value = true
@@ -248,9 +264,15 @@ async function fetchExercises() {
       params.execution_type = filters.execution_type
     }
 
+    if (filters.mechanic && filters.mechanic.length > 0 && filters.mechanic.length > 0) {
+      params.mechanic = filters.mechanic
+    }
+
+    console.log('PARAMS : ^^^^^^^^: ',  params)
+
 
     const response = await api.get('exercises', { params })
-    console.log(response.data)
+    console.log("exercices ------------ : ", response.data)
     allExercises.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
   } catch (error) {
     console.error('Erreur API ForgeX:', error)
@@ -273,7 +295,10 @@ const exercises = computed(() => {
     }
 
     // 2. Filtre mécanique
-    if (filters.mechanic && exo.mechanic !== filters.mechanic) return false
+    if (filters.mechanic.length > 0) {
+      const exoMechanicType = (exo.mechanic || '').toUpperCase()
+      if (!filters.mechanic.includes(exoMechanicType)) return false
+    }
 
     // 3. Filtre type de mouvement
     if (filters.movement_type.length > 0) {
@@ -305,6 +330,7 @@ function resetFilters() {
   fetchEquipment()
   fetchMovementTypes()
   fetchExecutionType()
+  fetchMechanics()
 }
 
 onMounted(() => {
@@ -313,6 +339,7 @@ onMounted(() => {
   fetchEquipment()
   fetchMovementTypes()
   fetchExecutionType()
+  fetchMechanics()
 })
 </script>
 
