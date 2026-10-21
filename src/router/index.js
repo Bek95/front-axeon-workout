@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth' // On aura besoin du store !
+import { useAuthStore } from '@/stores/auth'
 
 import HomeView from "@/views/HomeView.vue"
 import LoginView from '@/views/LoginView.vue'
 import WelcomeView from '@/views/WelcomeView.vue'
 import ProfileView from "@/views/users/profiles/ProfileView.vue";
 import ExercisesLibrary from "@/views/exercises/ExercisesLibraryView.vue";
+import CreateWorkoutView  from "@/views/workout/CreateWorkoutView.vue";
 
 const routes = [
   {
@@ -42,7 +43,16 @@ const routes = [
     name: 'exercises-library',
     component: ExercisesLibrary,
     meta: { requiresAuth: true }
-  }
+  },
+
+  // workout
+
+  {
+    path: '/workout/create',
+    name: 'create-workout',
+    component: CreateWorkoutView,
+    meta: { requiresAuth: true }
+  },
 
 ]
 

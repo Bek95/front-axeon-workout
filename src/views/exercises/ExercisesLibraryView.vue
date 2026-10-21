@@ -15,6 +15,12 @@
           type="text"
           :placeholder="currentLocale === 'fr' ? 'Rechercher un mouvement...' : 'Search exercise...'"
         />
+        <button
+          class="btn btn--ghost"
+          @click="searchByName"
+        >
+          Chercher
+        </button>
       </div>
     </header>
 
@@ -203,6 +209,12 @@ const perPage = ref([
   {id: optionId++, value: 100}
 ])
 
+function searchByName() {
+  if (filters.search) {
+    fetchExercises()
+  }
+}
+
 // Fonction de navigation
 function changePage(newPage) {
   filters.page = newPage
@@ -234,10 +246,10 @@ async function fetchExercises() {
     if (filters.movement_type && filters.movement_type.length > 0) params.movement_type = filters.movement_type
     if (filters.execution_type && filters.execution_type.length > 0) params.execution_type = filters.execution_type
     if (filters.mechanic && filters.mechanic.length > 0) params.mechanic = filters.mechanic
+    if (filters.search) params.name = filters.search
 
     const response = await api.get('exercises', { params })
 
-    // 🔹 MODIFICATION ICI : On va chercher dans response.data.meta
     if (response.data && response.data.meta) {
       allExercises.value = response.data.data || []
       pagination.current_page = response.data.meta.current_page
@@ -322,12 +334,12 @@ const exercises = computed(() => {
   if (!allExercises.value || allExercises.value.length === 0) return []
 
   return allExercises.value.filter(exo => {
-    if (filters.search) {
-      const query = filters.search.toLowerCase()
-      const nameFR = exo.name?.fr?.toLowerCase() || ''
-      const nameEN = exo.name?.en?.toLowerCase() || ''
-      if (!nameFR.includes(query) && !nameEN.includes(query)) return false
-    }
+    // if (filters.search) {
+    //   const query = filters.search.toLowerCase()
+    //   const nameFR = exo.name?.fr?.toLowerCase() || ''
+    //   const nameEN = exo.name?.en?.toLowerCase() || ''
+    //   if (!nameFR.includes(query) && !nameEN.includes(query)) return false
+    // }
 
     if (filters.mechanic.length > 0) {
       const exoMechanicType = (exo.mechanic || '').toUpperCase()
@@ -362,7 +374,6 @@ const visiblePages = computed(() => {
     if (i === 1 || i === last || (i >= current - delta && i <= current + delta)) {
       pages.push(i)
     } else if (pages[pages.length - 1] !== '...') {
-      // On ajoute les points de suspension si ce n'est pas déjà fait
       pages.push('...')
     }
   }

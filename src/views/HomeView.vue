@@ -17,10 +17,10 @@
         <p class="empty-forge__text">
           Force pure, cardio CrossFit ou fonctionnel... Combine tes objectifs et génère ta première séance sur-mesure.
         </p>
-        //todo a faire mettre en place la redirection
-<!--        <router-link :to="{ name: 'create-program' }" class="btn btn&#45;&#45;primary">-->
+        <!-- todo a faire mettre en place la redirection -->
+        <router-link :to="{ name: 'create-workout' }" class="btn btn--primary">
           Créer mon premier programme
-<!--        </router-link>-->
+        </router-link>
       </div>
 
       <div v-else class="workout-grid">
@@ -125,7 +125,7 @@ const formattedDate = computed(() => {
 
 /* Exploration cards */
 .dash-explore { margin-top: 4rem; }
-.dash-explore h3 { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.5rem;}
+.dash-explore h3 { font-family: 'Oswaldcreate-workout', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.5rem;}
 .explore-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
 .explore-card {
   background: #1c2024;
