@@ -22,7 +22,7 @@
         <ol class="block-list">
           <li v-for="(block, i) in draft.blocks" :key="block.uid" class="block-card">
             <div class="block-card__head">
-              <strong class="block-card__title">{{ i + 1 }}. {{ blockLabel(block.type) }}</strong>
+              <strong class="block-card__title">{{ i + 1 }}. {{ blockLabel(block.type) }} <span v-if="blockWithTimeCaps.includes(block.type)">Durée  : {{  blockTimeCaps(block) }} minutes</span></strong>
               <div class="block-card__actions">
                 <button type="button" class="icon-btn" :disabled="i === 0"
                         aria-label="Monter le bloc" @click="draft.moveBlock(block.uid, -1)">↑</button>
@@ -35,7 +35,10 @@
             <ul class="block-card__exos">
               <li v-for="(exo, k) in block.exercises" :key="k">
                 <span>{{ exo.name }}</span>
-                <span class="block-card__detail">
+                <span class="block-card__detail" v-if="blockWithTimeCaps.includes(block.type)">
+                  {{ exo.settings.reps }} · reps
+                </span>
+                <span class="block-card__detail" v-else>
                   {{ exo.settings.sets }} × {{ exo.settings.reps }} · repos {{ exo.settings.restTime }} s
                 </span>
               </li>
@@ -70,12 +73,25 @@
 
         <div v-if="isVisible" class="block-editor">
 
-          <div class="field">
-            <label class="field__label" for="rest-time">Temps de repos</label>
-            <div class="input-with-unit">
-              <input id="rest-time" class="input-axeon input-width-numbers" type="number" min="0"
-                     v-model.number="settings.restTime" />
-              <span>sec</span>
+          <div v-if="blockWithTimeCaps.includes(blockType)">
+            <div class="field">
+              <label class="field__label" for="rest-time">Temps de  travail</label>
+              <div class="input-with-unit">
+                <input id="rest-time" class="input-axeon input-width-numbers" type="number" min="0"
+                       v-model.number="settings.timeCaps" />
+                <span>minutes</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-else>
+            <div class="field">
+              <label class="field__label" for="rest-time">Temps de repos</label>
+              <div class="input-with-unit">
+                <input id="rest-time" class="input-axeon input-width-numbers" type="number" min="0"
+                       v-model.number="settings.restTime" />
+                <span>sec</span>
+              </div>
             </div>
           </div>
 
@@ -108,7 +124,7 @@
           </div>
 
           <div class="field-row">
-            <div class="field">
+            <div v-if="!blockWithTimeCaps.includes(blockType)" class="field">
               <label class="field__label" for="sets">Séries</label>
               <input id="sets" class="input-axeon" type="number" min="1" v-model.number="settings.sets" />
             </div>
@@ -124,7 +140,12 @@
           <ul v-if="trainingBlock.length" class="current-list">
             <li v-for="(exo, i) in trainingBlock" :key="i">
               <span>{{ exo.name }}</span>
-              <span class="block-card__detail">
+              <!-- pour blocs avec un temps réparti -->
+              <span class="block-card__detail" v-if="blockWithTimeCaps.includes(blockType)">
+                {{ exo.settings.reps }} - répétitions
+              </span>
+              <!-- pour blocs avec des séries -->
+              <span class="block-card__detail" v-else>
                 {{ exo.settings.sets }} × {{ exo.settings.reps }} · repos {{ exo.settings.restTime }} s
               </span>
               <button type="button" class="icon-btn icon-btn--danger"
@@ -149,7 +170,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted } from 'vue'
+import {reactive, ref, computed, onMounted, watch} from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api.js'
 import { useWorkoutDraft } from '@/stores/workoutDraft.js'
@@ -158,9 +179,10 @@ const router = useRouter()
 const draft = useWorkoutDraft()
 
 const defaultSettings = () => ({
-  restTime: 60,
-  sets: 4,
-  reps: 0,
+  timeCaps: null,
+  restTime: null,
+  sets: null,
+  reps: null,
 })
 
 const blockTypes = ref([])
@@ -172,6 +194,10 @@ const selectedExo = ref(null)
 const settings = ref(defaultSettings())
 const trainingBlock = ref([])            // exercices du bloc en cours d'édition
 const form = reactive({ type: null })
+const timeCaps = ref(0)
+const blockWithTimeCaps = ref([
+  'AMRAP'
+])
 
 const isVisible = computed(() => form.type !== null)
 const canSubmit = computed(() => draft.blocks.length > 0 && draft.sessionName.trim() !== '')
@@ -183,10 +209,23 @@ const filteredExercices = computed(() => {
 })
 
 const blockLabel = (key) => blockTypes.value.find(t => t.key === key)?.value ?? key
-
+const blockTimeCaps = (item) => {
+  if (item) {
+    return item.exercises[0].settings.timeCaps
+  }
+}
 function toggleType(key) {
   form.type = form.type === key ? null : key
 }
+
+const blockType = computed(() => {
+  return form.type
+})
+
+watch(blockType, (val) => {
+  console.log('blockType', blockType, 'val : ', val)
+})
+
 
 function selectExo(exo) {
   searchQuery.value = exo.name
@@ -200,11 +239,22 @@ function addExercise() {
     showError.value = true
     return
   }
+
+  console.log('block type : ', blockType.value)
+
+  if (blockWithTimeCaps.value.includes(blockType.value)) {
+    if (settings.value.timeCaps !== 0) {
+      timeCaps.value = settings.value.timeCaps
+    }
+  }
+
   trainingBlock.value.push({
-    id: selectedExo.value.id,
+    uid: selectedExo.value.id,
     name: selectedExo.value.name,
-    settings: { ...settings.value },      // copie figée
+    timeCaps: timeCaps.value,
+    settings: { ...settings.value },
   })
+
   searchQuery.value = ''
   selectedExo.value = null
   showError.value = false
@@ -215,10 +265,10 @@ function removeExercise(index) {
 }
 
 function validateBlock() {
+  timeCaps.value = 0
   if (!trainingBlock.value.length) return
   draft.addBlock({
     type: form.type,
-    settings: {},                          // à remplir pour EMOM, AMRAP, etc.
     exercises: trainingBlock.value,
   })
   trainingBlock.value = []
@@ -227,14 +277,17 @@ function validateBlock() {
 }
 
 async function submit() {
+  console.log('draft : ', draft)
   try {
-    await api.post('workouts', {
+    const response = await api.post('workouts', {
       title: draft.programTitle,
       session_name: draft.sessionName,
       blocks: draft.blocks,
     })
+
+    console.log('reponse API : ', response);
     draft.reset()
-    router.push({ name: 'dashboard' })
+    // router.push({ name: 'dashboard' })
   } catch (error) {
     console.error('Error saving workout', error)
   }

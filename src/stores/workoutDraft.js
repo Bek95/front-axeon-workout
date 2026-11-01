@@ -11,7 +11,6 @@ export const useWorkoutDraft = defineStore('workoutDraft', {
       this.blocks.push({
         uid: crypto.randomUUID(),
         type,
-        settings: { ...settings },
         exercises: exercises.map(e => ({ ...e, settings: { ...e.settings } })),
       })
     },
