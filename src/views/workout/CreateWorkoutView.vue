@@ -243,8 +243,11 @@ function addExercise() {
   console.log('block type : ', blockType.value)
 
   if (blockWithTimeCaps.value.includes(blockType.value)) {
+    console.log('times caps setting : ', settings.value.timeCaps)
     if (settings.value.timeCaps !== 0) {
+      console.log('value : ', settings.value.timeCaps)
       timeCaps.value = settings.value.timeCaps
+      console.log('time value : ', timeCaps.value)
     }
   }
 
@@ -265,19 +268,21 @@ function removeExercise(index) {
 }
 
 function validateBlock() {
-  timeCaps.value = 0
   if (!trainingBlock.value.length) return
   draft.addBlock({
     type: form.type,
+    timeCaps: timeCaps.value,
     exercises: trainingBlock.value,
   })
   trainingBlock.value = []
   settings.value = defaultSettings()
   form.type = null
+  timeCaps.value = 0
 }
 
 async function submit() {
   console.log('draft : ', draft)
+  console.log('trainingBlock : ', trainingBlock)
   try {
     const response = await api.post('workouts', {
       title: draft.programTitle,
@@ -299,10 +304,11 @@ onMounted(async () => {
       api.get('block-types'),
       api.get('exercises/all'),
     ])
+
     if (Array.isArray(typesRes.data)) blockTypes.value = typesRes.data
     exercicesForDropDown.value = (exosRes.data?.data ?? []).map(exo => ({
       id: exo.id,
-      name: exo.name.fr,
+      name: exo.name.fr
     }))
   } catch (error) {
     console.error('Error fetching form data', error)
