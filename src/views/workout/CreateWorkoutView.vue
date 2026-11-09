@@ -3,40 +3,101 @@
 
     <header class="forge-head">
       <p class="forge-head__eyebrow">Nouveau mix</p>
-      <h1 class="forge-head__title">Compose ta prochaine <span class="accent">séance</span></h1>
+      <h1 class="forge-head__title">Compose ton <span class="accent">programme</span></h1>
       <p class="forge-head__lead">
-        Choisis tes blocs et tes exercices, la Méthode ForgeX s'occupe du reste.
+        Crée une ou plusieurs séances (jusqu'à 6) et configure leurs blocs avant de tout valider.
       </p>
     </header>
 
+    <!-- Titre Global du Programme -->
     <section class="workout-title field">
       <label class="field__label" for="workout-title">Nom du programme</label>
-      <input id="workout-title" class="input-axeon" type="text" v-model="draft.programTitle">
+      <input id="workout-title" class="input-axeon" type="text" v-model="draft.programTitle" placeholder="Ex: Programme Volume Hypertrophie">
     </section>
 
-    <div class="forge-grid">
+    <!-- CAROUSEL DE SÉANCES -->
+    <div v-show="draft.hasBlocksAnywhere" class="sessions-preview">
+      <section class="carousel-section">
+        <div class="carousel-header">
+          <h2 class="field-block__title">Séances du programme : {{ draft.sessions.length }}</h2>
+        </div>
 
-      <!-- Récapitulatif des blocs validés -->
-      <section v-if="draft.blocks.length" class="field-block">
-        <h2 class="field-block__title">Blocs de la séance ({{ draft.blocks.length }})</h2>
+        <div class="carousel-container">
+          <div
+            v-for="(session, index) in draft.sessions"
+            :key="session.id"
+            class="session-card"
+            :class="{ 'session-card--active': draft.currentSessionIndex === index }"
+            @click="draft.selectSession(index)"
+          >
+            <div class="session-card__head">
+              <span class="session-card__badge">Séance {{ index + 1 }}</span>
+              <button
+                v-if="draft.sessions.length > 1"
+                type="button"
+                class="icon-btn icon-btn--danger"
+                aria-label="Supprimer la séance"
+                @click.stop="draft.removeSession(index)"
+              >✕</button>
+            </div>
+
+            <h3 class="session-card__title">{{ session.sessionName || 'Sans nom' }}</h3>
+
+            <!-- Contenu détaillé visible dans la carte -->
+            <div class="session-card__content">
+              <p v-if="session.blocks.length === 0" class="session-card__empty">Aucun bloc configuré</p>
+              <ul v-else class="session-card__preview-list">
+                <li v-for="(block, bIdx) in session.blocks" :key="block.front_block_uid">
+                  <strong>{{ bIdx + 1 }}. {{ blockLabel(block.type) }}</strong>
+                  <span class="preview-exos-count">({{ block.exercises.length }} exo{{ block.exercises.length > 1 ? 's' : '' }})</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="mb-3 d-flex flex-row-reverse">
+      <button
+        type="button"
+        class="btn btn--outline"
+        :disabled="!draft.canAddSession"
+        @click="draft.addSession"
+      >
+        + Ajouter une séance
+      </button>
+    </div>
+
+    <!-- ÉDITEUR DE LA SÉANCE SÉLECTIONNÉE -->
+    <div v-if="draft.currentSession" class="forge-grid">
+
+      <!-- Récapitulatif des blocs validés de la séance courante -->
+      <section v-if="draft.currentSession.blocks.length" class="field-block">
+        <h2 class="field-block__title">
+          Blocs de : {{ draft.currentSession.sessionName }} ({{ draft.currentSession.blocks.length }})
+        </h2>
         <ol class="block-list">
-          <li v-for="(block, i) in draft.blocks" :key="block.uid" class="block-card">
+          <li v-for="(block, i) in draft.currentSession.blocks" :key="block.front_block_uid" class="block-card">
             <div class="block-card__head">
-              <strong class="block-card__title">{{ i + 1 }}. {{ blockLabel(block.type) }} <span v-if="blockWithTimeCaps.includes(block.type)">Durée  : {{  blockTimeCaps(block) }} minutes</span></strong>
+              <strong class="block-card__title">
+                {{ i + 1 }}. {{ blockLabel(block.type) }}
+                <span v-if="blockWithTimeCaps.includes(block.type)">Durée : {{ blockTimeCaps(block) }} min</span>
+              </strong>
               <div class="block-card__actions">
                 <button type="button" class="icon-btn" :disabled="i === 0"
-                        aria-label="Monter le bloc" @click="draft.moveBlock(block.uid, -1)">↑</button>
-                <button type="button" class="icon-btn" :disabled="i === draft.blocks.length - 1"
-                        aria-label="Descendre le bloc" @click="draft.moveBlock(block.uid, 1)">↓</button>
+                        aria-label="Monter le bloc" @click="draft.moveBlock(block.front_block_uid, -1)">↑</button>
+                <button type="button" class="icon-btn" :disabled="i === draft.currentSession.blocks.length - 1"
+                        aria-label="Descendre le bloc" @click="draft.moveBlock(block.front_block_uid, 1)">↓</button>
                 <button type="button" class="icon-btn icon-btn--danger"
-                        aria-label="Supprimer le bloc" @click="draft.removeBlock(block.uid)">✕</button>
+                        aria-label="Supprimer le bloc" @click="draft.removeBlock(block.front_block_uid)">✕</button>
               </div>
             </div>
             <ul class="block-card__exos">
               <li v-for="(exo, k) in block.exercises" :key="k">
                 <span>{{ exo.name }}</span>
                 <span class="block-card__detail" v-if="blockWithTimeCaps.includes(block.type)">
-                  {{ exo.settings.reps }} · reps
+                  {{ exo.settings.reps }} reps
                 </span>
                 <span class="block-card__detail" v-else>
                   {{ exo.settings.sets }} × {{ exo.settings.reps }} · repos {{ exo.settings.restTime }} s
@@ -47,12 +108,12 @@
         </ol>
       </section>
 
-      <!-- Éditeur du bloc en cours -->
+      <!-- Éditeur de bloc en cours -->
       <section class="field-block">
 
         <div class="field">
-          <label class="field__label" for="session-name">Nom de la séance</label>
-          <input id="session-name" class="input-axeon" type="text" v-model="draft.sessionName">
+          <label class="field__label" for="session-name">Nom de la séance actuelle</label>
+          <input id="session-name" class="input-axeon" type="text" v-model="draft.currentSession.sessionName">
         </div>
 
         <div v-if="blockTypes.length" class="field">
@@ -75,9 +136,9 @@
 
           <div v-if="blockWithTimeCaps.includes(blockType)">
             <div class="field">
-              <label class="field__label" for="rest-time">Temps de  travail</label>
+              <label class="field__label" for="time-caps">Temps de travail</label>
               <div class="input-with-unit">
-                <input id="rest-time" class="input-axeon input-width-numbers" type="number" min="0"
+                <input id="time-caps" class="input-axeon input-width-numbers" type="number" min="0"
                        v-model.number="settings.timeCaps" />
                 <span>minutes</span>
               </div>
@@ -140,11 +201,9 @@
           <ul v-if="trainingBlock.length" class="current-list">
             <li v-for="(exo, i) in trainingBlock" :key="i">
               <span>{{ exo.name }}</span>
-              <!-- pour blocs avec un temps réparti -->
               <span class="block-card__detail" v-if="blockWithTimeCaps.includes(blockType)">
-                {{ exo.settings.reps }} - répétitions
+                {{ exo.settings.reps }} répétitions
               </span>
-              <!-- pour blocs avec des séries -->
               <span class="block-card__detail" v-else>
                 {{ exo.settings.sets }} × {{ exo.settings.reps }} · repos {{ exo.settings.restTime }} s
               </span>
@@ -160,9 +219,10 @@
       </section>
     </div>
 
+    <!-- Actions globales (marche pour 1 ou plusieurs séances dès qu'il y a du contenu) -->
     <div class="forge-actions">
       <button type="button" class="btn btn--primary" :disabled="!canSubmit" @click="submit">
-        Forger ma séance
+        Enregistrer
       </button>
     </div>
 
@@ -170,7 +230,7 @@
 </template>
 
 <script setup>
-import {reactive, ref, computed, onMounted, watch} from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api.js'
 import { useWorkoutDraft } from '@/stores/workoutDraft.js'
@@ -192,15 +252,13 @@ const showDropDown = ref(false)
 const showError = ref(false)
 const selectedExo = ref(null)
 const settings = ref(defaultSettings())
-const trainingBlock = ref([])            // exercices du bloc en cours d'édition
+const trainingBlock = ref([])
 const form = reactive({ type: null })
 const timeCaps = ref(0)
-const blockWithTimeCaps = ref([
-  'AMRAP'
-])
+const blockWithTimeCaps = ref(['AMRAP'])
 
 const isVisible = computed(() => form.type !== null)
-const canSubmit = computed(() => draft.blocks.length > 0 && draft.sessionName.trim() !== '')
+const canSubmit = computed(() => draft.programTitle.trim() !== '' && draft.hasBlocksAnywhere)
 
 const filteredExercices = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -209,23 +267,13 @@ const filteredExercices = computed(() => {
 })
 
 const blockLabel = (key) => blockTypes.value.find(t => t.key === key)?.value ?? key
-const blockTimeCaps = (item) => {
-  if (item) {
-    return item.exercises[0].settings.timeCaps
-  }
-}
+const blockTimeCaps = (item) => item?.exercises[0]?.settings?.timeCaps
+
 function toggleType(key) {
   form.type = form.type === key ? null : key
 }
 
-const blockType = computed(() => {
-  return form.type
-})
-
-watch(blockType, (val) => {
-  console.log('blockType', blockType, 'val : ', val)
-})
-
+const blockType = computed(() => form.type)
 
 function selectExo(exo) {
   searchQuery.value = exo.name
@@ -240,14 +288,9 @@ function addExercise() {
     return
   }
 
-  console.log('block type : ', blockType.value)
-
   if (blockWithTimeCaps.value.includes(blockType.value)) {
-    console.log('times caps setting : ', settings.value.timeCaps)
     if (settings.value.timeCaps !== 0) {
-      console.log('value : ', settings.value.timeCaps)
       timeCaps.value = settings.value.timeCaps
-      console.log('time value : ', timeCaps.value)
     }
   }
 
@@ -281,20 +324,21 @@ function validateBlock() {
 }
 
 async function submit() {
-  console.log('draft : ', draft)
-  console.log('trainingBlock : ', trainingBlock)
   try {
-    const response = await api.post('workouts', {
+    const payload = {
       title: draft.programTitle,
-      session_name: draft.sessionName,
-      blocks: draft.blocks,
-    })
+      sessions: draft.sessions.map(s => ({
+        session_name: s.sessionName,
+        blocks: s.blocks,
+      })),
+    }
 
-    console.log('reponse API : ', response);
+    const response = await api.post('workouts', payload)
+    console.log('Réponse API :', response)
     draft.reset()
     // router.push({ name: 'dashboard' })
   } catch (error) {
-    console.error('Error saving workout', error)
+    console.error('Erreur lors de la sauvegarde du programme', error)
   }
 }
 
@@ -307,11 +351,11 @@ onMounted(async () => {
 
     if (Array.isArray(typesRes.data)) blockTypes.value = typesRes.data
     exercicesForDropDown.value = (exosRes.data?.data ?? []).map(exo => ({
-      exercise_uuid: exo.id,
-      name: exo.name.fr
+      id: exo.uuid,
+      name: exo.name?.fr || exo.name
     }))
   } catch (error) {
-    console.error('Error fetching form data', error)
+    console.error('Erreur de chargement des données', error)
   }
 })
 </script>
@@ -340,7 +384,95 @@ onMounted(async () => {
 .forge-head__title .accent { color: #ff5a36; }
 .forge-head__lead { color: #a9a39a; margin-top: 0.5rem; max-width: 480px; line-height: 1.6; }
 
-/* Blocs */
+/* Carousel de séances */
+.carousel-section {
+  margin-bottom: 2rem;
+}
+.carousel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.carousel-container {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  scroll-snap-type: x mandatory;
+}
+.session-card {
+  flex: 0 0 240px;
+  scroll-snap-align: start;
+  background: #1c2024;
+  border: 1px solid #323840;
+  border-radius: 8px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.session-card:hover {
+  border-color: #ff5a36;
+}
+.session-card--active {
+  background: #21252a;
+  border-color: #ff5a36;
+  box-shadow: 0 0 12px rgba(255, 90, 54, 0.2);
+}
+.session-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.session-card__badge {
+  font-size: 0.75rem;
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  color: #ff5a36;
+}
+.session-card__title {
+  font-size: 1.05rem;
+  color: #fff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.session-card__content {
+  margin-top: 0.5rem;
+  border-top: 1px solid #323840;
+  padding-top: 0.5rem;
+  min-height: 50px;
+}
+.session-card__empty {
+  font-size: 0.78rem;
+  color: #70757d;
+  font-style: italic;
+  margin: 0;
+}
+.session-card__preview-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.session-card__preview-list li {
+  font-size: 0.8rem;
+  color: #d9d2c5;
+  display: flex;
+  justify-content: space-between;
+}
+.preview-exos-count {
+  color: #a9a39a;
+  font-size: 0.75rem;
+}
+
+/* Blocs & Formulaire */
 .workout-title {
   background: #21252a;
   border: 1px solid #323840;
@@ -369,10 +501,9 @@ onMounted(async () => {
   letter-spacing: 0.04em;
   font-size: 0.85rem;
   color: #a9a39a;
-  margin: 0 0 0.6rem;
+  margin: 0;
 }
 
-/* Champs */
 .field { display: flex; flex-direction: column; gap: 0.6rem; }
 .field__label {
   font-family: 'Oswald', sans-serif;
@@ -402,7 +533,6 @@ onMounted(async () => {
   transition: border-color 0.2s, color 0.2s, background 0.2s;
 }
 .chip:hover { border-color: #ff5a36; color: #f4f1ea; }
-.chip:focus-visible { outline: 2px solid #ff5a36; outline-offset: 2px; }
 .chip--active {
   background: #ff5a36;
   border-color: #ff5a36;
@@ -447,13 +577,10 @@ onMounted(async () => {
   font-family: 'Epilogue', sans-serif;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
 }
 .dropdown-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
-.dropdown-item:first-child { border-radius: 12px 12px 0 0; }
-.dropdown-item:last-child { border-radius: 0 0 12px 12px; }
 
-/* Listes : exercices en cours + blocs validés */
+/* Listes */
 .block-list, .block-card__exos, .current-list {
   list-style: none;
   margin: 0;
@@ -476,13 +603,10 @@ onMounted(async () => {
 .block-card__title {
   font-family: 'Oswald', sans-serif;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
   color: #d9d2c5;
 }
 .block-card__actions { display: flex; gap: 0.4rem; }
-.block-card__exos { display: flex; flex-direction: column; gap: 0.5rem; }
-.block-card__exos li,
-.current-list li {
+.block-card__exos li, .current-list li {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -502,7 +626,6 @@ onMounted(async () => {
   height: 32px;
   border-radius: 6px;
   cursor: pointer;
-  transition: border-color 0.2s, color 0.2s;
 }
 .icon-btn:hover:not(:disabled) { border-color: #ff5a36; color: #f4f1ea; }
 .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -517,11 +640,19 @@ onMounted(async () => {
   letter-spacing: 0.03em;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: opacity 0.2s;
 }
 .btn--primary { background: #ff5a36; color: #14171a; padding: 0.9rem 2rem; }
 .btn--primary:hover:not(:disabled) { opacity: 0.9; }
 .btn--primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn--outline {
+  background: transparent;
+  border: 1px solid #ff5a36;
+  color: #ff5a36;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+}
+.btn--outline:hover:not(:disabled) { background: #ff5a36; color: #14171a; }
+.btn--outline:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .forge-actions { display: flex; justify-content: flex-end; }
 </style>
