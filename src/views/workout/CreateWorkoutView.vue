@@ -252,7 +252,7 @@ function addExercise() {
   }
 
   trainingBlock.value.push({
-    uid: selectedExo.value.id,
+    exercise_uuid: selectedExo.value.id,
     name: selectedExo.value.name,
     timeCaps: timeCaps.value,
     settings: { ...settings.value },
@@ -307,7 +307,7 @@ onMounted(async () => {
 
     if (Array.isArray(typesRes.data)) blockTypes.value = typesRes.data
     exercicesForDropDown.value = (exosRes.data?.data ?? []).map(exo => ({
-      id: exo.id,
+      exercise_uuid: exo.id,
       name: exo.name.fr
     }))
   } catch (error) {
